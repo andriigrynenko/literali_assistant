@@ -156,7 +156,13 @@ def main_loop(process, process_contours = empty_process_contours):
             if key == ord('p'):
                 for time in itertools.count(0):
                     if highlight_contours_ids is not None:
-                        display_frame_copy = display_frame.copy()
+                        display_frame_copy = frame.copy()
+                        display_frame_copy = cv2.blur(display_frame_copy, (20, 20), 50)
+
+                        mask = numpy.zeros([frame.shape[0], frame.shape[1]])
+                        cv2.drawContours(mask, contours, -1, (255), -1)
+                        copy_locs = numpy.where(mask != 0)
+                        display_frame_copy[copy_locs[0], copy_locs[1]] = frame[copy_locs[0], copy_locs[1]]
 
                         contour_time = 10
                         max_highlight = 8
@@ -166,8 +172,8 @@ def main_loop(process, process_contours = empty_process_contours):
                         cur_contour_highlight = max_highlight - int((time % contour_time) / contour_time * max_highlight)
                         next_contour_highlight = max_highlight - cur_contour_highlight
 
-                        cv2.drawContours(display_frame_copy, [highlight_contours[cur_contour]], -1, (0, 255, 0), 4 + cur_contour_highlight)
-                        cv2.drawContours(display_frame_copy, [highlight_contours[next_contour]], -1, (0, 255, 0), 4 + next_contour_highlight)
+                        cv2.drawContours(display_frame_copy, [highlight_contours[cur_contour]], -1, (0, 255, 0), 1 + cur_contour_highlight)
+                        cv2.drawContours(display_frame_copy, [highlight_contours[next_contour]], -1, (0, 255, 0), 1 + next_contour_highlight)
                         cv2.imshow("Capturing", display_frame_copy)
 
                     key = cv2.waitKey(50)
