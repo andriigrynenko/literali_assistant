@@ -137,10 +137,6 @@ def main_loop(process, process_contours = empty_process_contours):
             display_frame = frame.copy()
             cv2.drawContours(display_frame, contours, -1, (0, 255, 0), 3)
             cv2.imshow("Capturing", display_frame)
-            #cv2.imshow("Capturing", thresh)
-            #cv2.imshow("Capturing", framenoblue)
-            #cv2.waitKey(50)
-            #cv2.imshow("Capturing", framenoblue)
             if len(processed_contours) >= 5:        
                 extracted_squares = [extract(framegray, contour) for contour in processed_contours]
                 process(extracted_squares)
