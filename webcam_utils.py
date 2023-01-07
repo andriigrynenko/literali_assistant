@@ -3,30 +3,50 @@ import numpy
 import statistics
 
 def contour_to_square(contour):
-    ratio_threshold = 0.75
-    bb_area_threshold = 0.75
-    approx_area_threshold = 0.9
+    ratio_threshold = 0.5
+    bb_area_threshold = 0.6
+    approx_area_threshold = 0.8
+    approx_perimeter_threshold = 0.8
+    max_size = 200
     
     boundingRect = cv2.boundingRect(contour)
     if boundingRect[2]/boundingRect[3] < ratio_threshold or boundingRect[3]/boundingRect[2] < ratio_threshold:
         return None
     area = cv2.contourArea(contour)
+    perimeter = cv2.arcLength(contour, True)
     if area < 100:
         return None
     if area / (boundingRect[2] * boundingRect[3]) < bb_area_threshold:
         return None
-
-    approxContour = cv2.approxPolyDP(contour, cv2.arcLength(contour, True)*0.1, True)
-    if len(approxContour) != 4:
+    if boundingRect[2] > max_size or boundingRect[3] > max_size:
         return None
 
-    if area / cv2.contourArea(approxContour) < approx_area_threshold:
+    approx_factor_left = 0
+    approx_factor_right = 0.2
+    approx_contour = contour
+    for _ in range(10):
+        approx_factor = (approx_factor_left + approx_factor_right)/2
+        new_approx_contour = cv2.approxPolyDP(contour, cv2.arcLength(contour, True)*approx_factor, True)
+        if len(new_approx_contour) < 4:
+            approx_factor_right = approx_factor
+        else:
+            approx_factor_left = approx_factor
+        if len(new_approx_contour) == 4:
+            approx_contour = new_approx_contour
+    
+    if len(approx_contour) != 4:
         return None
 
-    if not cv2.isContourConvex(approxContour):
+    if not cv2.isContourConvex(approx_contour):
+        return None
+
+    if area / cv2.contourArea(approx_contour) < approx_area_threshold or cv2.contourArea(approx_contour) / area < approx_area_threshold:
+        return None
+
+    if perimeter / cv2.arcLength(approx_contour, True) < approx_perimeter_threshold or cv2.arcLength(approx_contour, True) / perimeter < approx_perimeter_threshold:
         return None
  
-    return approxContour
+    return approx_contour
 
 def filter_out_wrong_size(contours):
     size_threshold = 0.75
@@ -50,7 +70,7 @@ def filter_out_wrong_size(contours):
             contours[i] = None
 
 
-def filter_contours(contours, hierarchy):
+def filter_out_child_contours(contours, hierarchy):
     filtered_contours = []
     for i in range(len(contours)):
         if contours[i] is None:
@@ -59,10 +79,7 @@ def filter_contours(contours, hierarchy):
         while parent >= 0 and contours[parent] is None:
             parent = hierarchy[0][parent][3]
         if parent >= 0:
-            continue
-        filtered_contours.append(contours[i])
-
-    return filtered_contours
+            contours[i] = None
 
 def extract(img, contour):
     target_size = 32
@@ -98,19 +115,32 @@ def main_loop(process, process_contours = empty_process_contours):
     while True:
         try:
             _, frame = webcam.read()
-            framegray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            edges = cv2.Canny(framegray,25,50,1)
-            ret, thresh = cv2.threshold(edges, 127, 255, 0)
+            framenoblue = frame.copy()
+            framenoblue[:,:,0] = numpy.zeros([framenoblue.shape[0], framenoblue.shape[1]])
+            framegray = cv2.cvtColor(framenoblue, cv2.COLOR_BGR2GRAY)
+            processed_frame = cv2.multiply(framenoblue, (1, 1, 1, 1), scale = 2)
+            b, g, r = cv2.split(processed_frame)
+            processed_frame[:,:,0] = cv2.max(g, r)
+            processed_frame[:,:,1] = cv2.max(g, r)
+            processed_frame[:,:,2] = cv2.max(g, r)
+            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2GRAY)
+            thresh = cv2.adaptiveThreshold(processed_frame,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY_INV,9,2)
             contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             contours = list(map(contour_to_square, contours)) 
+            filter_out_child_contours(contours, hierarchy)
             filter_out_wrong_size(contours)
-            contours = filter_contours(contours, hierarchy)
+
+            contours = list(filter(lambda c : c is not None, contours))
 
             processed_contours = process_contours(contours)
         
             display_frame = frame.copy()
             cv2.drawContours(display_frame, contours, -1, (0, 255, 0), 3)
             cv2.imshow("Capturing", display_frame)
+            #cv2.imshow("Capturing", thresh)
+            #cv2.imshow("Capturing", framenoblue)
+            #cv2.waitKey(50)
+            #cv2.imshow("Capturing", framenoblue)
             if len(processed_contours) >= 5:        
                 extracted_squares = [extract(framegray, contour) for contour in processed_contours]
                 process(extracted_squares)
@@ -120,3 +150,9 @@ def main_loop(process, process_contours = empty_process_contours):
 
     webcam.release()
     cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    def empty_process(extracted_squares):
+        pass
+
+    main_loop(empty_process)
