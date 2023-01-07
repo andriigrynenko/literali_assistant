@@ -2,3 +2,4 @@ __pycache__
 dataset*
 envs
 sample_generator_output
+dict_cache.lst
