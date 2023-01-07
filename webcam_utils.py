@@ -1,4 +1,5 @@
 import cv2
+import imageio
 import itertools
 import numpy
 import statistics
@@ -153,7 +154,9 @@ def main_loop(process, process_contours = empty_process_contours):
                 cv2.imshow("Capturing", display_frame_copy)
 
             key = cv2.waitKey(50)
-            if key == ord('p'):
+            if key == ord('p') or key == ord('g'):
+                generate_gif = key == ord('g')
+                gif_frames = []
                 for time in itertools.count(0):
                     if highlight_contours_ids is not None:
                         display_frame_copy = frame.copy()
@@ -175,10 +178,16 @@ def main_loop(process, process_contours = empty_process_contours):
                         cv2.drawContours(display_frame_copy, [highlight_contours[cur_contour]], -1, (0, 255, 0), 1 + cur_contour_highlight)
                         cv2.drawContours(display_frame_copy, [highlight_contours[next_contour]], -1, (0, 255, 0), 1 + next_contour_highlight)
                         cv2.imshow("Capturing", display_frame_copy)
+                        if generate_gif and time % 4 == 0:
+                            gif_frames.append(cv2.cvtColor(display_frame_copy, cv2.COLOR_BGR2RGB))
 
                     key = cv2.waitKey(50)
                     if key == ord('p'):
                         break
+                if len(gif_frames) > 0:
+                    with imageio.get_writer("capture.gif", mode="I") as writer:
+                        for frame in gif_frames:
+                            writer.append_data(frame)
         except(KeyboardInterrupt):
             break
 
