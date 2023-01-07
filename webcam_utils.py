@@ -1,4 +1,5 @@
 import cv2
+import itertools
 import numpy
 import statistics
 
@@ -135,12 +136,43 @@ def main_loop(process, process_contours = empty_process_contours):
             processed_contours = process_contours(contours)
         
             display_frame = frame.copy()
-            cv2.drawContours(display_frame, contours, -1, (0, 255, 0), 3)
+            cv2.drawContours(display_frame, contours, -1, (0, 255, 0), 2)
             cv2.imshow("Capturing", display_frame)
+            cv2.waitKey(1)
+            highlight_contours_ids = []
             if len(processed_contours) >= 5:        
                 extracted_squares = [extract(framegray, contour) for contour in processed_contours]
-                process(extracted_squares)
+                highlight_contours_ids = process(extracted_squares)
+
+            if highlight_contours_ids is not None:
+                highlight_contours = []
+                for id in highlight_contours_ids:
+                    highlight_contours.append(contours[id])
+                display_frame_copy = display_frame.copy()
+                cv2.drawContours(display_frame_copy, highlight_contours, -1, (0, 255, 0), 4)
+                cv2.imshow("Capturing", display_frame_copy)
+
             key = cv2.waitKey(50)
+            if key == ord('p'):
+                for time in itertools.count(0):
+                    if highlight_contours_ids is not None:
+                        display_frame_copy = display_frame.copy()
+
+                        contour_time = 10
+                        max_highlight = 8
+
+                        cur_contour = time // contour_time % len(highlight_contours)
+                        next_contour = (cur_contour + 1) % len(highlight_contours)
+                        cur_contour_highlight = max_highlight - int((time % contour_time) / contour_time * max_highlight)
+                        next_contour_highlight = max_highlight - cur_contour_highlight
+
+                        cv2.drawContours(display_frame_copy, [highlight_contours[cur_contour]], -1, (0, 255, 0), 4 + cur_contour_highlight)
+                        cv2.drawContours(display_frame_copy, [highlight_contours[next_contour]], -1, (0, 255, 0), 4 + next_contour_highlight)
+                        cv2.imshow("Capturing", display_frame_copy)
+
+                    key = cv2.waitKey(50)
+                    if key == ord('p'):
+                        break
         except(KeyboardInterrupt):
             break
 

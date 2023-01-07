@@ -85,6 +85,8 @@ def find_match(chars, score = score_len):
     for c in characters:
         d[c] = 0
     for i, c in enumerate(chars):
+        if c == '?':
+            continue
         d[c] += 1
         mask |= 1 << i
 
@@ -118,7 +120,16 @@ def process(extracted_squares):
         character = net.guess_character(square)
         if not character is None:
             result.append(character)
-    print(result)
-    print(find_match(result))
+        else:
+            result.append('?')
+    match = find_match(result)
+    highlight_contour_ids = []
+    if len(match) > 0:
+        print(match)
+        for c in match:
+            id = result.index(c)
+            highlight_contour_ids.append(id)
+            result[id] = '*'
+    return highlight_contour_ids
 
 webcam_utils.main_loop(process)
