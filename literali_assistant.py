@@ -1,3 +1,4 @@
+import copy
 import cv2
 import os
 import urllib
@@ -69,26 +70,41 @@ def with_mask(dict):
 
 dict_with_mask = with_mask(dict)
 
-def score_len(word):
+def score_len_with_redness(word, char_to_redness):
+    res = 0
+    ctr = copy.deepcopy(char_to_redness)
+    for c in word:
+        redness = ctr[c].pop()
+        if redness < 1:
+            res += 1
+        if redness < 2:
+            res += 3
+        if redness < 3:
+            res += 8
+        else: 
+            res += 32
+    return res
+
+def score_len(word, char_to_redness):
     return len(word)
 
-def score_len8(word):
+def score_len8(word, char_to_redness):
     if len(word) < 8:
         return 0
     return 100 - len(word)
 
-def find_match(chars, score = score_len):
+def find_match(chars, char_to_redness, score = score_len_with_redness):
     s = -1
     r = ""
     d = {}
     mask = 0
     for c in characters:
         d[c] = 0
-    for i, c in enumerate(chars):
+    for c in chars:
         if c == '?':
             continue
         d[c] += 1
-        mask |= 1 << i
+        mask |= 1 << characters.index(c)
 
     for word, word_mask in dict_with_mask:
         if (mask & word_mask) != word_mask:
@@ -104,7 +120,7 @@ def find_match(chars, score = score_len):
         if not ok:
             continue
 
-        ns = score(word)
+        ns = score(word, char_to_redness)
         if ns > s:
             s = ns
             r = word
@@ -114,7 +130,7 @@ print('Dict size:', len(dict))
 
 net = char_net.CharNet.create_from_file('./char_net0.pt')
 
-def process(extracted_squares):
+def process(extracted_squares, extracted_squares_redness):
     result = []
     for square in extracted_squares:
         character = net.guess_character(square)
@@ -122,11 +138,18 @@ def process(extracted_squares):
             result.append(character)
         else:
             result.append('?')
-    match = find_match(result)
+    char_to_redness = {}
+    for c in result:
+        char_to_redness[c] = []
+    for c, redness in zip(result, extracted_squares_redness):
+        char_to_redness[c].append(redness)
+        char_to_redness[c].sort()
+    match = find_match(result, char_to_redness)
     highlight_contour_ids = []
     if len(match) > 0:
         print(match)
         for c in match:
+            # TODO: find the one with highest redness
             id = result.index(c)
             highlight_contour_ids.append(id)
             result[id] = '*'

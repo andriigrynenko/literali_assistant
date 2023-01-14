@@ -110,6 +110,19 @@ def extract(img, contour):
     M = cv2.getPerspectiveTransform(pts1,pts2)
     return cv2.warpPerspective(img,M,(target_size,target_size))
 
+def get_redness(img):
+    count = 0
+    sum = 0
+    for x in range(32):
+        for y in range(32):
+            if img[x][y][0] > 100:
+                continue
+            count += 1
+            sum += (img[x][y][2]/max(img[x][y][1], 1))
+    if count == 0:
+        return 0
+    return sum / count
+
 def empty_process_contours(contours):
     return contours
 
@@ -157,7 +170,8 @@ def main_loop(process, process_contours = empty_process_contours):
             highlight_contours_ids = []
             if len(processed_contours) >= 5:        
                 extracted_squares = [extract(framegray, contour) for contour in processed_contours]
-                highlight_contours_ids = process(extracted_squares)
+                extracted_squares_redness = [get_redness(extract(frame, contour)) for contour in processed_contours]
+                highlight_contours_ids = process(extracted_squares, extracted_squares_redness)
 
             if highlight_contours_ids is not None:
                 highlight_contours = []
@@ -210,7 +224,7 @@ def main_loop(process, process_contours = empty_process_contours):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    def empty_process(extracted_squares):
+    def empty_process(extracted_squares, extracted_squares_redness):
         pass
 
     main_loop(empty_process)
