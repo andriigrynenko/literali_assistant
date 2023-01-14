@@ -3,6 +3,7 @@ import imageio
 import itertools
 import numpy
 import statistics
+from mss import mss
 
 def contour_to_square(contour):
     ratio_threshold = 0.5
@@ -112,16 +113,29 @@ def extract(img, contour):
 def empty_process_contours(contours):
     return contours
 
-def main_loop(process, process_contours = empty_process_contours):
+use_webcam = False
+
+if use_webcam:
     webcam = cv2.VideoCapture(0)
+    def get_next_frame():
+        _, frame = webcam.read()
+        return frame
+else:
+    sct = mss()
+    bounding_box = {'top': 500, 'left': 1500, 'width': 500, 'height': 400}
+    def get_next_frame():
+        return numpy.array(sct.grab(bounding_box))
+
+def main_loop(process, process_contours = empty_process_contours):
+    
     while True:
         try:
-            _, frame = webcam.read()
+            frame = get_next_frame()
             framenoblue = frame.copy()
             framenoblue[:,:,0] = numpy.zeros([framenoblue.shape[0], framenoblue.shape[1]])
             framegray = cv2.cvtColor(framenoblue, cv2.COLOR_BGR2GRAY)
             processed_frame = cv2.multiply(framenoblue, (1, 1, 1, 1), scale = 2)
-            b, g, r = cv2.split(processed_frame)
+            b, g, r = cv2.split(processed_frame)[0:3]
             processed_frame[:,:,0] = cv2.max(g, r)
             processed_frame[:,:,1] = cv2.max(g, r)
             processed_frame[:,:,2] = cv2.max(g, r)
@@ -191,7 +205,8 @@ def main_loop(process, process_contours = empty_process_contours):
         except(KeyboardInterrupt):
             break
 
-    webcam.release()
+    if use_webcam:
+        webcam.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
