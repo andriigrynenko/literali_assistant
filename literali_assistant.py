@@ -71,18 +71,29 @@ def with_mask(dict):
 dict_with_mask = with_mask(dict)
 
 def score_len_with_redness(word, char_to_redness):
+    max_redness = 0
+    for rs in char_to_redness.values():
+        for r in rs:
+            max_redness = max(max_redness, r)
+    if max_redness >= 3 and len(word) > 7:
+        return 0
+    if max_redness >= 2 and len(word) > 10:
+        return 0
+
     res = 0
     ctr = copy.deepcopy(char_to_redness)
     for c in word:
         redness = ctr[c].pop()
         if redness < 1:
             res += 1
-        if redness < 2:
-            res += 3
-        if redness < 3:
+        elif redness < 1.4:
+            res += 2
+        elif redness < 2:
             res += 8
-        else: 
+        elif redness < 3:
             res += 32
+        else: 
+            res += 128
     return res
 
 def score_len(word, char_to_redness):

@@ -144,9 +144,12 @@ def main_loop(process, process_contours = empty_process_contours):
     while True:
         try:
             frame = get_next_frame()
+            frameblue = frame.copy()
+            frameblue[:,:,1] = frameblue[:,:,0]
+            frameblue[:,:,2] = frameblue[:,:,0]
             framenoblue = frame.copy()
             framenoblue[:,:,0] = numpy.zeros([framenoblue.shape[0], framenoblue.shape[1]])
-            framegray = cv2.cvtColor(framenoblue, cv2.COLOR_BGR2GRAY)
+            framegray = cv2.cvtColor(frameblue, cv2.COLOR_BGR2GRAY)
             processed_frame = cv2.multiply(framenoblue, (1, 1, 1, 1), scale = 2)
             b, g, r = cv2.split(processed_frame)[0:3]
             processed_frame[:,:,0] = cv2.max(g, r)

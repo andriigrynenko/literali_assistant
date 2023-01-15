@@ -60,7 +60,7 @@ os.mkdir(output_dir)
 for i in range(25):
     os.mkdir(output_dir + '/' + str(i))
 
-def process(extracted_squares):
+def process(extracted_squares, extracted_squares_redness):
     for i, image in enumerate(extracted_squares):
         write = cv2.imwrite(filename=output_dir + '/' + str(i)+'/' + str(random.randint(1000000, 9999999)) +'.png', img=image)
         if not write:
